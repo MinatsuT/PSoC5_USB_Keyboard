@@ -1,0 +1,27 @@
+#
+# .gitignore file for PSoC Creator 4.0
+#
+
+# User preferences
+*.cyprj.*
+*.cywrk.*
+
+# Log files
+*.log
+*Log.txt
+
+# Temp directry
+*.cydsn/codegentemp/*
+
+# Automatically generated files
+*.cydsn/Generated_Source/*
+*.cydsn/CortexM3/*
+*.cydsn/ARM_GCC_*
+*.cydsn/Export/*
+*.cycdx
+*.cyfit
+*.rpt
+*.svd
+*timing.html
+
+Backup/USB_Audio_PSoC5LP_I2S._4.0_Update_1.zip
