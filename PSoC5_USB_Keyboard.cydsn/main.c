@@ -56,10 +56,10 @@ int main(void) {
     DP("\n\nPSoC5 LP UART Controlled USB Keyboard. Programmed By Minatsu, 2017.\n");
     DP("Waiting enumeration ...\n");
 
-    /*Start USBFS Operation and Device 0 and with 5V operation*/
+    /*Start USBFS Operation of Device 0 with 5V operation*/
     USBFS_Start(0, USBFS_DWR_VDDD_OPERATION);
 
-    /*Waits for USB to enumerate*/
+    /*Wait for USB to be enumerated*/
     while (!USBFS_bGetConfiguration()) ;
     DP("Enumerated by host\n");
 
@@ -122,14 +122,13 @@ void pushKey(uint16 key) {
         }
     }
 
-    if (cur_pos == 0 || Keyboard_Data[0] == mod) {
-        Keyboard_Data[0] = mod;
-        Keyboard_Data[2+(cur_pos++)] = code;
-    } else {
+    /* If the packet is not empty and the modifier is changed, flush the packet. */
+    if (cur_pos != 0 && Keyboard_Data[0] != mod) {
         flushPacket();
-        Keyboard_Data[0] = mod;
-        Keyboard_Data[2+(cur_pos++)] = code;
     }
+
+    Keyboard_Data[0] = mod;
+    Keyboard_Data[2+(cur_pos++)] = code;
 
     if (cur_pos == MAX_KEYS_IN_PACKET) {
         flushPacket();

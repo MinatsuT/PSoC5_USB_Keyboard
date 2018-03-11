@@ -24,4 +24,5 @@
 *.svd
 *timing.html
 
-Backup/USB_Audio_PSoC5LP_I2S._4.0_Update_1.zip
+# Backup archive
+Backup/*.zip
