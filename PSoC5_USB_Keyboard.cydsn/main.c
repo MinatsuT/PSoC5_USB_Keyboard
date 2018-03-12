@@ -14,7 +14,7 @@
 #define ENTER 0x28
 
 void In_EP(void);
-void pushKey(uint16 key);
+void pushKey(uint8 mod, uint8 code);
 void flushPacket(void);
 
 //Creats a Scan Code Look Up Table for the various ASCII values
@@ -82,10 +82,18 @@ void In_EP(void) {
     if (UART_GetRxBufferSize()) {
         /* Receive 1 byte from UART, and push ScanCode into the packet. */
         c = UART_GetByte();
-        if ((c >= 0x20) && (c <= 0x7E)) {
-            pushKey(aASCII_ToScanCode[c-0x20]);
+        if (c == 0x00) {
+            while(!UART_GetRxBufferSize());
+            uint8 mod=UART_GetByte();
+            while(!UART_GetRxBufferSize());
+            uint8 code=UART_GetByte();
+            DP("RCV: %02X,%02X\n",mod,code);
+            pushKey(mod,code);
+        } else if ((c >= 0x20) && (c <= 0x7E)) {
+            uint16 key=aASCII_ToScanCode[c-0x20];
+            pushKey((key & 0x100) ? LSHIFT : 0x00, key & 0xff);
         } else if (c == 0x0d) {
-            pushKey(ENTER);
+            pushKey(0x00, ENTER);
         }
     } else {
         /* When there is no input, flush the packet. */
@@ -109,9 +117,7 @@ void In_EP(void) {
 }
 
 /* Push key into the packet. */
-void pushKey(uint16 key) {
-    uint8 mod = (key & 0x100) ? LSHIFT : 0x00;
-    uint8 code = key & 0xff;
+void pushKey(uint8 mod, uint8 code) {
     uint8 i;
 
     /* Check if the same code is already in the packet. */
