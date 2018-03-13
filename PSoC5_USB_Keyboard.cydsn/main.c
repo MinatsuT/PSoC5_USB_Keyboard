@@ -87,7 +87,6 @@ void In_EP(void) {
             uint8 mod=UART_GetByte();
             while(!UART_GetRxBufferSize());
             uint8 code=UART_GetByte();
-            DP("RCV: %02X,%02X\n",mod,code);
             pushKey(mod,code);
         } else if ((c >= 0x20) && (c <= 0x7E)) {
             uint16 key=aASCII_ToScanCode[c-0x20];
@@ -149,21 +148,23 @@ void flushPacket() {
         return;
     }
 
-    /*Loads EP1 for a IN transfer to PC*/
+    /*Loads EP1 for an IN transfer to PC*/
     USBFS_LoadInEP(1, Keyboard_Data, 8);
     /*Waits for ACK from PC*/
     while (!USBFS_bGetEPAckState(1)) ;
+    CyDelay(15);
 
     /* Clear the packet. */
     for (i = 0; i < 8; i++) {
         Keyboard_Data[i] = 0x00;
     }
 
-    /*Loads EP1 for a IN transfer to PC. This simulates the buttons being released.*/
+    /*Loads EP1 for an IN transfer to PC. This simulates the buttons being released.*/
     USBFS_LoadInEP(1, Keyboard_Data, 8);
-    /*Waits for ACK from PC*/
+    /*Waits for an ACK from PC*/
     while (!USBFS_bGetEPAckState(1)) ;
-
+    //CyDelay(15);
+    
     /* Reset current position in the packet. */
     cur_pos = 0;
 }
