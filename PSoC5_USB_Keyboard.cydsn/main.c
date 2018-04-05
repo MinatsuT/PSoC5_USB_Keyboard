@@ -16,6 +16,8 @@
 void In_EP(void);
 void pushKey(uint8 mod, uint8 code);
 void flushPacket(void);
+void sendRawKey(void);
+void sendStream(void);
 
 //Creats a Scan Code Look Up Table for the various ASCII values
 //                                      0      1      2      3      4      5      6      7      8      9      a      b      c      d      e      f
@@ -28,6 +30,7 @@ const uint16 aASCII_ToScanCode[] = {0x02C, 0x11E, 0x11F, 0x120, 0x121, 0x122, 0x
 
 /* Array of Keycode information to send to PC */
 static unsigned char Keyboard_Data[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+static unsigned char Stream_Data[8];
 
 /* Max keys which are simultaneously sent. */
 #define MAX_KEYS_IN_PACKET 6
@@ -53,20 +56,20 @@ int main(void) {
     /* Start Debug Port */
     UART_Start();
 
-    DP("\n\nPSoC5 LP UART Controlled USB Keyboard. Programmed By Minatsu, 2017.\n");
-    DP("Waiting enumeration ...\n");
+    DP("\n\nPSoC5LP UART Controlled USB Keyboard. Programmed By Minatsu, 2017-2018.\n");
 
     /*Start USBFS Operation of Device 0 with 5V operation*/
     USBFS_Start(0, USBFS_DWR_VDDD_OPERATION);
 
-    /*Wait for USB to be enumerated*/
-    while (!USBFS_bGetConfiguration()) ;
-    DP("Enumerated by host\n");
-
-    /*Begins USB Traffic*/
-    USBFS_LoadInEP(1, Keyboard_Data, 8);
-
     for (;;) {
+        if (USBFS_IsConfigurationChanged()) {
+            /*Wait for USB to be enumerated*/
+            while (!USBFS_bGetConfiguration()) ;
+            DP("USB connected.\n");
+            /*Begins USB Traffic*/
+            USBFS_LoadInEP(1, Keyboard_Data, 8);
+        }
+
         /*Checks for ACK from host*/
         if (USBFS_bGetEPAckState(1)) {
             /*Function to push and send Data to PC*/
@@ -83,11 +86,9 @@ void In_EP(void) {
         /* Receive 1 byte from UART, and push ScanCode into the packet. */
         c = UART_GetByte();
         if (c == 0x00) {
-            while(!UART_GetRxBufferSize());
-            uint8 mod=UART_GetByte();
-            while(!UART_GetRxBufferSize());
-            uint8 code=UART_GetByte();
-            pushKey(mod,code);
+            sendRawKey();
+        } else if (c == 0xff) {
+            sendStream();
         } else if ((c >= 0x20) && (c <= 0x7E)) {
             uint16 key=aASCII_ToScanCode[c-0x20];
             pushKey((key & 0x100) ? LSHIFT : 0x00, key & 0xff);
@@ -102,17 +103,32 @@ void In_EP(void) {
     }
 
     /* Software flow control. */
-    if (UART_GetRxBufferSize() > UART_RX_BUFFER_SIZE/2) {
-        if (!isOverflow) {
-            UART_PutChar(XOFF);
-            isOverflow = 1u;
-        }
-    } else {
-        if (isOverflow) {
-            UART_PutChar(XON);
-            isOverflow = 0u;
-        }
+    if (!isOverflow && (UART_GetRxBufferSize() > UART_RX_BUFFER_SIZE/4)) {
+        UART_PutChar(XOFF);
+        isOverflow = 1u;
+        //DP("XOFF\n");
     }
+    if (isOverflow && (UART_GetRxBufferSize() < UART_RX_BUFFER_SIZE/8)) {
+        UART_PutChar(XON);
+        isOverflow = 0u;
+        //DP("XON\n");
+    }
+}
+
+/* Push raw key. */
+void sendRawKey() {
+    uint8 i;
+    for (i = 0; i < 8; i++) {
+        Stream_Data[i] = 0;
+    }
+
+    while(!UART_GetRxBufferSize());
+    Stream_Data[0] = UART_GetByte(); // mod
+    while(!UART_GetRxBufferSize());
+    Stream_Data[2] = UART_GetByte(); // code
+
+    USBFS_LoadInEP(1, Stream_Data, 8);
+    while (!USBFS_bGetEPAckState(1)) ;
 }
 
 /* Push key into the packet. */
@@ -167,5 +183,22 @@ void flushPacket() {
     
     /* Reset current position in the packet. */
     cur_pos = 0;
+}
+
+/* send stream packet */
+void sendStream() {
+    while(!UART_GetRxBufferSize());
+    Stream_Data[0] = UART_GetByte();
+    Stream_Data[1] = 0;
+    
+    for(int i=0;i<6;i++) {
+        while(!UART_GetRxBufferSize());
+        Stream_Data[2+i] = UART_GetByte();
+    }
+
+    USBFS_LoadInEP(1, Stream_Data, 8);
+    /*Waits for ACK from PC*/
+    while (!USBFS_bGetEPAckState(1)) ;
+    //CyDelay(7);
 }
 /* End of File */
