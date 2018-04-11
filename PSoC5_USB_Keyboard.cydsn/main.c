@@ -67,6 +67,7 @@ int main(void) {
             while (!USBFS_bGetConfiguration()) ;
             DP("USB connected.\n");
             /*Begins USB Traffic*/
+            for (uint8 i = 0; i < 8; i++) Stream_Data[i] = 0;
             USBFS_LoadInEP(1, Keyboard_Data, 8);
         }
 
@@ -103,12 +104,12 @@ void In_EP(void) {
     }
 
     /* Software flow control. */
-    if (!isOverflow && (UART_GetRxBufferSize() > UART_RX_BUFFER_SIZE/4)) {
+    if (!isOverflow && (UART_GetRxBufferSize() > UART_RX_BUFFER_SIZE/2)) {
         UART_PutChar(XOFF);
         isOverflow = 1u;
         //DP("XOFF\n");
     }
-    if (isOverflow && (UART_GetRxBufferSize() < UART_RX_BUFFER_SIZE/8)) {
+    if (isOverflow && (UART_GetRxBufferSize() < UART_RX_BUFFER_SIZE/4)) {
         UART_PutChar(XON);
         isOverflow = 0u;
         //DP("XON\n");
