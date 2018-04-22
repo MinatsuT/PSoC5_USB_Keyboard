@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "stdlib.h": "c",
+        "project.h": "c",
+        "usbfs.h": "c",
+        "cylib.h": "c",
+        "string.h": "c",
+        "reent.h": "c",
+        "_types.h": "c"
+    }
+}
